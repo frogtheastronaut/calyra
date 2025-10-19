@@ -1,7 +1,7 @@
 'use client';
 
 import CalyraCalendar from '../components/calendar';
-import { Box, Button, TextInput } from '@mantine/core';
+import { Box, Button, TextInput, Modal } from '@mantine/core';
 import { useState, useMemo } from 'react';
 import {
   useReactTable,
@@ -42,6 +42,11 @@ export default function HomePage() {
   
   // Calendar coordination
   const [calendarClearToken, setCalendarClearToken] = useState(0);
+
+  // Settings modal state
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [settingsTableIndex, setSettingsTableIndex] = useState<number | null>(null);
+  const [editedTableName, setEditedTableName] = useState('');
 
   // Add a new table
   const addTitle = () => {
@@ -218,6 +223,73 @@ export default function HomePage() {
       setSelectedHeatmapColumn(null);
       setCalendarClearToken((v) => v + 1);
     }
+  };
+
+  // Open settings modal for a table
+  const openSettings = (index: number) => {
+    setSettingsTableIndex(index);
+    setEditedTableName(titles[index]);
+    setSettingsModalOpen(true);
+  };
+
+  // Close settings modal
+  const closeSettings = () => {
+    setSettingsModalOpen(false);
+    setSettingsTableIndex(null);
+    setEditedTableName('');
+  };
+
+  // Rename table
+  const renameTable = () => {
+    if (settingsTableIndex === null) return;
+    
+    const trimmed = editedTableName.trim();
+    if (!trimmed) return;
+    
+    setTitles((prev) => {
+      const newTitles = [...prev];
+      newTitles[settingsTableIndex] = trimmed;
+      return newTitles;
+    });
+    
+    closeSettings();
+  };
+
+  // Delete table
+  const deleteTable = () => {
+    if (settingsTableIndex === null) return;
+    
+    // Remove from titles
+    setTitles((prev) => prev.filter((_, i) => i !== settingsTableIndex));
+    
+    // Remove from schemas and reindex
+    setTableSchemas((prev) => {
+      const newSchemas: { [key: number]: TableSchema } = {};
+      let newIndex = 0;
+      
+      Object.keys(prev).forEach((key) => {
+        const oldIndex = Number(key);
+        if (oldIndex !== settingsTableIndex) {
+          newSchemas[newIndex] = prev[oldIndex];
+          newIndex++;
+        }
+      });
+      
+      return newSchemas;
+    });
+    
+    // Clear selection if this table was selected
+    if (selectedIndex === settingsTableIndex) {
+      setSelectedIndex(null);
+      setSelectedDate(null);
+      setCurrentRowData({});
+      setSelectedHeatmapColumn(null);
+    } else if (selectedIndex !== null && selectedIndex > settingsTableIndex) {
+      // Adjust selected index if it's after the deleted table
+      setSelectedIndex(selectedIndex - 1);
+    }
+    
+    closeSettings();
   };
 
   // Toggle heatmap for a column
@@ -443,28 +515,62 @@ export default function HomePage() {
                 return (
                   <div
                     key={index}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => toggleSelectTitle(index)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        toggleSelectTitle(index);
-                      }
-                    }}
                     style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
                       padding: '10px 12px',
                       borderRadius: 6,
                       backgroundColor: isSelected ? '#2684FF' : '#fff',
                       color: isSelected ? '#fff' : '#000',
-                      cursor: 'pointer',
                       border: isSelected ? '2px solid #2684FF' : '1px solid #ddd',
-                      userSelect: 'none',
                       transition: 'all 0.15s ease',
-                      fontWeight: isSelected ? 500 : 400,
                     }}
                   >
-                    {title}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => toggleSelectTitle(index)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleSelectTitle(index);
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        fontWeight: isSelected ? 500 : 400,
+                      }}
+                    >
+                      {title}
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openSettings(index);
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: isSelected ? '#fff' : '#666',
+                        fontSize: 18,
+                        opacity: 0.7,
+                        transition: 'opacity 0.15s ease',
+                        fontFamily: 'Material Icons',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+                      title="Settings"
+                    >
+                      settings
+                    </button>
                   </div>
                 );
               })}
@@ -701,6 +807,58 @@ export default function HomePage() {
           </>
         )}
       </div>
+
+      {/* Settings Modal */}
+      <Modal
+        opened={settingsModalOpen}
+        onClose={closeSettings}
+        title="Table Settings"
+        centered
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Rename section */}
+          <div>
+            <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+              Table Name
+            </label>
+            <TextInput
+              value={editedTableName}
+              onChange={(e) => setEditedTableName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') renameTable();
+              }}
+              placeholder="Enter table name"
+            />
+          </div>
+
+          {/* Delete section */}
+          <div style={{ paddingTop: 8, borderTop: '1px solid #dee2e6' }}>
+            <Button
+              onClick={deleteTable}
+              variant="filled"
+              color="red"
+              fullWidth
+            >
+              Delete Table
+            </Button>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#d32f2f', textAlign: 'center' }}>
+              Warning: Cannot be undone!
+            </div>
+          </div>
+
+          {/* Save button */}
+          <div style={{ paddingTop: 8, borderTop: '1px solid #dee2e6' }}>
+            <Button
+              onClick={renameTable}
+              variant="filled"
+              color="blue"
+              fullWidth
+            >
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
