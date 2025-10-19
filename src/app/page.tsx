@@ -2,13 +2,14 @@
 
 import CalyraCalendar from '../components/calendar';
 import { Box, Button, TextInput, Modal } from '@mantine/core';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
   flexRender,
   type ColumnDef,
 } from '@tanstack/react-table';
+import { saveAppState, loadAppState, type AppState } from '../utils/db';
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
 
@@ -47,6 +48,47 @@ export default function HomePage() {
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [settingsTableIndex, setSettingsTableIndex] = useState<number | null>(null);
   const [editedTableName, setEditedTableName] = useState('');
+
+  // Loading state
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load data from IndexedDB on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const savedState = await loadAppState();
+        if (savedState) {
+          setTitles(savedState.titles);
+          setTableSchemas(savedState.tableSchemas);
+        }
+      } catch (error) {
+        console.error('Failed to load data from IndexedDB:', error);
+      } finally {
+        setIsLoaded(true);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Save data to IndexedDB whenever titles or tableSchemas change
+  useEffect(() => {
+    if (!isLoaded) return; // Don't save during initial load
+
+    const saveData = async () => {
+      try {
+        const state: AppState = {
+          titles,
+          tableSchemas,
+        };
+        await saveAppState(state);
+      } catch (error) {
+        console.error('Failed to save data to IndexedDB:', error);
+      }
+    };
+
+    saveData();
+  }, [titles, tableSchemas, isLoaded]);
 
   // Add a new table
   const addTitle = () => {
