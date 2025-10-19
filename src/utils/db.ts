@@ -1,7 +1,7 @@
 // IndexedDB utility for persisting table data
 
 const DB_NAME = 'CalyraDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'tables';
 
 export type TableData = {
@@ -17,6 +17,16 @@ export type AppState = {
   titles: string[];
   tableSchemas: { [key: number]: TableSchema };
 };
+
+export type MonthlyExport = {
+  month: string; // Format: YYYY-MM
+  tableTitle: string;
+  columnName: string;
+  chartData: { date: string; value: number }[];
+  generatedAt: number; // timestamp
+};
+
+const EXPORTS_STORE_NAME = 'exports';
 
 // Initialize the database
 export const initDB = (): Promise<IDBDatabase> => {
@@ -36,6 +46,10 @@ export const initDB = (): Promise<IDBDatabase> => {
       
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME);
+      }
+      
+      if (!db.objectStoreNames.contains(EXPORTS_STORE_NAME)) {
+        db.createObjectStore(EXPORTS_STORE_NAME);
       }
     };
   });
@@ -94,6 +108,46 @@ export const clearAppState = async (): Promise<void> => {
 
     request.onsuccess = () => {
       resolve();
+    };
+  });
+};
+
+// Save monthly export to IndexedDB
+export const saveMonthlyExport = async (exportData: MonthlyExport): Promise<void> => {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([EXPORTS_STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(EXPORTS_STORE_NAME);
+    const key = `${exportData.month}_${exportData.tableTitle}_${exportData.columnName}`;
+    const request = store.put(exportData, key);
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+
+    request.onsuccess = () => {
+      resolve();
+    };
+  });
+};
+
+// Get monthly export from IndexedDB
+export const getMonthlyExport = async (month: string, tableTitle: string, columnName: string): Promise<MonthlyExport | null> => {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([EXPORTS_STORE_NAME], 'readonly');
+    const store = transaction.objectStore(EXPORTS_STORE_NAME);
+    const key = `${month}_${tableTitle}_${columnName}`;
+    const request = store.get(key);
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+
+    request.onsuccess = () => {
+      resolve(request.result || null);
     };
   });
 };
