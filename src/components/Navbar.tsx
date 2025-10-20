@@ -1,65 +1,53 @@
+'use client';
+
 import Link from 'next/link';
+import '../app/colors.css';
 
 export default function Navbar() {
   return (
     <nav
+      className="navbar"
       style={{
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
-        height: 60,
-        backgroundColor: '#fff',
-        borderBottom: '1px solid #e0e0e0',
+        height: 'var(--navbar-height)',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 24px',
+        padding: '0 var(--spacing-xl)',
         zIndex: 1000,
-        boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 32, width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2xl)', width: '100%' }}>
         {/* Logo/Brand */}
         <Link 
           href="/"
+          className="logo"
           style={{
-            fontSize: 20,
-            fontWeight: 700,
-            color: '#2684FF',
             textDecoration: 'none',
-            letterSpacing: '-0.5px',
           }}
         >
           Calyra
         </Link>
 
         {/* Navigation Links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginLeft: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xl)', marginLeft: 'auto' }}>
           <Link
             href="/pricing"
+            className="nav-link"
             style={{
-              fontSize: 14,
-              fontWeight: 500,
-              color: '#333',
               textDecoration: 'none',
-              transition: 'color 0.2s ease',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.color = '#2684FF'}
-            onMouseLeave={(e) => e.currentTarget.style.color = '#333'}
           >
             Pricing
           </Link>
           <Link
             href="/account"
+            className="nav-link"
             style={{
-              fontSize: 14,
-              fontWeight: 500,
-              color: '#333',
               textDecoration: 'none',
-              transition: 'color 0.2s ease',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.color = '#2684FF'}
-            onMouseLeave={(e) => e.currentTarget.style.color = '#333'}
           >
             Account
           </Link>

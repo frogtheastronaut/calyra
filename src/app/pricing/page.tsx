@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Navbar from '../../components/Navbar';
+import '../colors.css';
 
 export default function PricingPage() {
   return (
@@ -9,47 +10,40 @@ export default function PricingPage() {
       <Navbar />
       <div
         style={{
-          marginTop: 60,
-          height: 'calc(100vh - 60px)',
+          marginTop: 'var(--navbar-height)',
+          height: 'calc(100vh - var(--navbar-height))',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '0 24px',
+          padding: '0 var(--spacing-lg)',
           textAlign: 'center',
+          backgroundColor: 'var(--color-background)',
         }}
       >
         <h1
           style={{
-            fontSize: 48,
-            fontWeight: 700,
-            color: '#2684FF',
-            marginBottom: 16,
+            fontSize: 'var(--font-size-4xl)',
+            fontWeight: 'var(--font-weight-bold)',
+            color: 'var(--color-primary)',
+            marginBottom: 'var(--spacing-md)',
           }}
         >
           Pricing
         </h1>
         <p
           style={{
-            fontSize: 18,
-            color: '#666',
-            maxWidth: 600,
-            marginBottom: 32,
+            fontSize: 'var(--font-size-lg)',
+            color: 'var(--color-text)',
+            maxWidth: '600px',
+            marginBottom: 'var(--spacing-xl)',
           }}
         >
-          Pricing information coming soon.
+			The Calyra developers are still working on pricing plans.
+			For now, you can use Calyra for free with no account required.
+			Paid accounts will be added soon! Thank you for your patience and willingness
+			to try out Calyra. Stay tuned!
         </p>
-        <Link
-          href="/"
-          style={{
-            color: '#2684FF',
-            textDecoration: 'none',
-            fontSize: 16,
-            fontWeight: 500,
-          }}
-        >
-          ← Back to Home
-        </Link>
       </div>
     </>
   );

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import AppPage from './app-page';
 import Link from 'next/link';
+import '../colors.css';
 
 export default function AppLayout() {
   const [hasDataToExport, setHasDataToExport] = useState(false);
@@ -25,77 +26,48 @@ export default function AppLayout() {
     <>
       {/* Navbar */}
       <nav
+        className="navbar"
         style={{
           position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
-          height: 60,
-          backgroundColor: '#fff',
-          borderBottom: '1px solid #e0e0e0',
+          height: 'var(--navbar-height)',
           display: 'flex',
           alignItems: 'center',
-          padding: '0 24px',
+          padding: '0 var(--spacing-xl)',
           zIndex: 1000,
-          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 32, width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2xl)', width: '100%' }}>
           {/* Logo/Brand */}
           <Link 
             href="/"
+            className="logo"
             style={{
-              fontSize: 20,
-              fontWeight: 700,
-              color: '#2684FF',
               textDecoration: 'none',
-              letterSpacing: '-0.5px',
             }}
           >
             Calyra
           </Link>
 
           {/* Navigation Links - moved to the right but not at the end */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginLeft: 'auto', marginRight: 16 }}>
-            <Link
-              href="/"
-              style={{
-                fontSize: 14,
-                fontWeight: 500,
-                color: '#333',
-                textDecoration: 'none',
-                transition: 'color 0.2s ease',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#2684FF'}
-              onMouseLeave={(e) => e.currentTarget.style.color = '#333'}
-            >
-              Home
-            </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-lg)', marginLeft: 'auto', marginRight: 'var(--spacing-md)' }}>
             <Link
               href="/pricing"
+              className="nav-link"
               style={{
-                fontSize: 14,
-                fontWeight: 500,
-                color: '#333',
                 textDecoration: 'none',
-                transition: 'color 0.2s ease',
               }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#2684FF'}
-              onMouseLeave={(e) => e.currentTarget.style.color = '#333'}
             >
               Pricing
             </Link>
             <Link
               href="/account"
+              className="nav-link"
               style={{
-                fontSize: 14,
-                fontWeight: 500,
-                color: '#333',
                 textDecoration: 'none',
-                transition: 'color 0.2s ease',
               }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#2684FF'}
-              onMouseLeave={(e) => e.currentTarget.style.color = '#333'}
             >
               Account
             </Link>
@@ -106,22 +78,35 @@ export default function AppLayout() {
                 onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
                 disabled={!hasDataToExport || !hasHeatmap}
                 style={{
-                  background: hasDataToExport && hasHeatmap ? '#2684FF' : '#ccc',
+                  background: hasDataToExport && hasHeatmap ? 'var(--color-accent)' : 'var(--color-gray-400)',
                   border: 'none',
-                  borderRadius: 6,
-                  padding: '8px 14px',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: 'var(--spacing-sm) var(--spacing-lg)',
                   cursor: hasDataToExport && hasHeatmap ? 'pointer' : 'not-allowed',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 6,
-                  color: '#fff',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  transition: 'all 0.2s ease',
+                  gap: 'var(--spacing-sm)',
+                  color: 'var(--color-white)',
+                  fontSize: 'var(--font-size-base)',
+                  fontWeight: 'var(--font-weight-semibold)',
+                  transition: 'all var(--transition-base)',
+                  boxShadow: hasDataToExport && hasHeatmap ? 'var(--shadow-md)' : 'none',
+                }}
+                onMouseEnter={(e) => {
+                  if (hasDataToExport && hasHeatmap) {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (hasDataToExport && hasHeatmap) {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                  }
                 }}
                 title="Export data"
               >
-                <span style={{ fontFamily: 'Material Icons', fontSize: 16 }}>upload</span>
+                <span style={{ fontFamily: 'Material Icons', fontSize: 18 }}>upload</span>
                 <span>Export</span>
               </button>
 
@@ -130,35 +115,36 @@ export default function AppLayout() {
                 <div
                   style={{
                     position: 'absolute',
-                    top: 'calc(100% + 8px)',
+                    top: 'calc(100% + var(--spacing-sm))',
                     right: 0,
-                    backgroundColor: '#fff',
-                    borderRadius: 8,
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                    backgroundColor: 'var(--color-white)',
+                    borderRadius: 'var(--radius-lg)',
+                    boxShadow: 'var(--shadow-xl)',
                     overflow: 'hidden',
-                    minWidth: 200,
+                    minWidth: '200px',
                     zIndex: 101,
+                    border: '1px solid var(--color-gray-200)',
                   }}
                 >
                   <button
                     onClick={() => handleExportClick('graph')}
                     style={{
                       width: '100%',
-                      padding: '12px 16px',
+                      padding: 'var(--spacing-sm) var(--spacing-md)',
                       border: 'none',
                       background: 'none',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 12,
-                      fontSize: 14,
-                      color: '#000',
-                      transition: 'background-color 0.15s ease',
+                      gap: 'var(--spacing-sm)',
+                      fontSize: 'var(--font-size-sm)',
+                      color: 'var(--color-text)',
+                      transition: 'background-color var(--transition-fast)',
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-gray-50)'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <span style={{ fontFamily: 'Material Icons', fontSize: 20, color: '#2684FF' }}>
+                    <span style={{ fontFamily: 'Material Icons', fontSize: 20, color: 'var(--color-primary)' }}>
                       show_chart
                     </span>
                     <span>Export to Line Graph</span>
@@ -168,21 +154,21 @@ export default function AppLayout() {
                     onClick={() => handleExportClick('heatmap')}
                     style={{
                       width: '100%',
-                      padding: '12px 16px',
+                      padding: 'var(--spacing-sm) var(--spacing-md)',
                       border: 'none',
                       background: 'none',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 12,
-                      fontSize: 14,
-                      color: '#000',
-                      transition: 'background-color 0.15s ease',
+                      gap: 'var(--spacing-sm)',
+                      fontSize: 'var(--font-size-sm)',
+                      color: 'var(--color-text)',
+                      transition: 'background-color var(--transition-fast)',
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-gray-50)'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <span style={{ fontFamily: 'Material Icons', fontSize: 20, color: '#1976d2' }}>
+                    <span style={{ fontFamily: 'Material Icons', fontSize: 20, color: 'var(--color-accent)' }}>
                       calendar_month
                     </span>
                     <span>Export to Heatmap</span>
@@ -197,8 +183,8 @@ export default function AppLayout() {
       {/* Main content */}
       <div
         style={{
-          marginTop: 60,
-          height: 'calc(100vh - 60px)',
+          marginTop: 'var(--navbar-height)',
+          height: 'calc(100vh - var(--navbar-height))',
         }}
       >
         <AppPage 
