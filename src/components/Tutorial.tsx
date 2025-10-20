@@ -15,7 +15,7 @@ const tutorialSteps: TutorialStep[] = [
   {
     target: 'welcome',
     title: 'Welcome to Calyra! 🎉',
-    description: 'Thank you for trying Calyra!Let\'s get started by creating your first table!',
+    description: 'Thank you for trying Calyra! Let\'s get started by creating your first table!',
     position: 'center',
     trigger: 'auto',
   },
