@@ -16,8 +16,8 @@ export default function AppLayout() {
   };
 
   const handleExportClick = (type: 'graph' | 'heatmap') => {
-    if ((window as any).__calyraExport) {
-      (window as any).__calyraExport(type);
+    if (typeof window.__calyraExport === 'function') {
+      window.__calyraExport(type);
     }
     setExportDropdownOpen(false);
   };

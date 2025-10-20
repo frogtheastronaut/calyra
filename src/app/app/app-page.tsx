@@ -63,8 +63,7 @@ export default function AppPage({ onExportStateChange, onExportClick }: AppPageP
   const exportCanvasRef = useRef<HTMLDivElement>(null);
   const heatmapCanvasRef = useRef<HTMLDivElement>(null);
 
-  // Export dropdown state
-  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+  // Export dropdown state (managed by parent) - local state removed
 
   // Tutorial state
   const [showTutorial, setShowTutorial] = useState(false);
@@ -136,7 +135,8 @@ export default function AppPage({ onExportStateChange, onExportClick }: AppPageP
   }, [hasDataToExport, selectedHeatmapColumn, onExportStateChange]);
 
   // Export all data for the selected table/column
-  const exportData = async (type: 'graph' | 'heatmap') => {
+  const exportData = useMemo(() => {
+    return async (type: 'graph' | 'heatmap') => {
     if (selectedIndex === null || !selectedHeatmapColumn) {
       alert('Please select a table and enable heatmap visualization on a column before exporting.');
       return;
@@ -211,20 +211,20 @@ export default function AppPage({ onExportStateChange, onExportClick }: AppPageP
       alert('Failed to save export data.');
     }
   };
+  }, [selectedIndex, selectedHeatmapColumn, tableSchemas, titles]);
 
   // Expose export function to parent
   useEffect(() => {
     if (onExportClick) {
-      // Store the export function reference for the parent to call
-      (window as any).__calyraExport = (type: 'graph' | 'heatmap') => {
-        exportData(type);
-        setExportDropdownOpen(false);
+      window.__calyraExport = (type: 'graph' | 'heatmap') => {
+        // call the memoized exportData
+        void exportData(type);
       };
     }
     return () => {
-      delete (window as any).__calyraExport;
+      if (window.__calyraExport) delete window.__calyraExport;
     };
-  }, [onExportClick, selectedIndex, selectedHeatmapColumn, tableSchemas, titles]);
+  }, [onExportClick, exportData]);
 
   // Download the graph as PNG
   const downloadGraph = async () => {
