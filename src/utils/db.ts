@@ -151,3 +151,38 @@ export const getMonthlyExport = async (month: string, tableTitle: string, column
     };
   });
 };
+
+// Delete the entire database (backdoor function for resetting)
+export const deleteDatabase = async (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(DB_NAME);
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+
+    request.onsuccess = () => {
+      console.log('✅ Calyra database deleted successfully. Refresh the page to start fresh!');
+      resolve();
+    };
+
+    request.onblocked = () => {
+      console.warn('⚠️ Database deletion blocked. Please close all tabs with Calyra open and try again.');
+    };
+  });
+};
+
+// Expose reset function to window for console access
+if (typeof window !== 'undefined') {
+  (window as any).resetCalyra = async () => {
+    try {
+      await deleteDatabase();
+      console.log('🔄 Reloading page...');
+      window.location.reload();
+    } catch (error) {
+      console.error('❌ Failed to reset Calyra:', error);
+    }
+  };
+  
+  console.log('💡 Type resetCalyra() in the console to delete all data and restart the tutorial');
+}

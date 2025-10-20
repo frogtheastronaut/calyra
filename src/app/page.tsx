@@ -2,6 +2,7 @@
 
 import CalyraCalendar from '../components/calendar';
 import ExportGraph from '../components/ExportGraph';
+import Tutorial from '../components/Tutorial';
 import { Box, Button, TextInput, Modal } from '@mantine/core';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import {
@@ -61,6 +62,11 @@ export default function HomePage() {
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Tutorial state
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialCompleted, setTutorialCompleted] = useState(false);
+  const [currentTrigger, setCurrentTrigger] = useState('auto');
+
   // Loading state
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -81,6 +87,12 @@ export default function HomePage() {
     };
   }, [exportDropdownOpen]);
 
+  // Handle tutorial completion
+  const handleTutorialComplete = () => {
+    setShowTutorial(false);
+    setTutorialCompleted(true);
+  };
+
   // Load data from IndexedDB on mount
   useEffect(() => {
     const loadData = async () => {
@@ -89,6 +101,9 @@ export default function HomePage() {
         if (savedState) {
           setTitles(savedState.titles);
           setTableSchemas(savedState.tableSchemas);
+        } else {
+          // No saved data - show tutorial
+          setShowTutorial(true);
         }
       } catch (error) {
         console.error('Failed to load data from IndexedDB:', error);
@@ -131,6 +146,11 @@ export default function HomePage() {
       [newIndex]: { columns: ['Date'], data: [] },
     }));
     setNewTitle('');
+    
+    // Trigger tutorial progression
+    if (showTutorial) {
+      setCurrentTrigger('table-created');
+    }
   };
 
   // Add a column to the selected table
@@ -150,6 +170,11 @@ export default function HomePage() {
       },
     }));
     setNewColumnName('');
+    
+    // Trigger tutorial progression
+    if (showTutorial) {
+      setCurrentTrigger('column-added');
+    }
   };
 
   // Remove a column from the selected table
@@ -248,6 +273,11 @@ export default function HomePage() {
           data: [...current.data, newRowData],
         },
       }));
+      
+      // Trigger tutorial progression
+      if (showTutorial) {
+        setCurrentTrigger('row-added');
+      }
     }
     
     // Reset state
@@ -293,6 +323,11 @@ export default function HomePage() {
       setCurrentRowData({});
       setSelectedHeatmapColumn(null);
       setCalendarClearToken((v) => v + 1);
+      
+      // Trigger tutorial progression
+      if (showTutorial) {
+        setCurrentTrigger('table-selected');
+      }
     }
   };
 
@@ -370,6 +405,21 @@ export default function HomePage() {
       return;
     }
 
+    // Get current month in YYYY-MM format
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    // Check if already exported this month
+    const { getMonthlyExport } = await import('../utils/db');
+    const existingExport = await getMonthlyExport(currentMonth, titles[selectedIndex], selectedHeatmapColumn);
+    
+    if (existingExport) {
+      const exportDate = new Date(existingExport.generatedAt);
+      const formattedDate = exportDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      alert(`You've already exported this data this month on ${formattedDate}. You can export again next month.`);
+      return;
+    }
+
     const current = tableSchemas[selectedIndex];
     
     // Get all data and sort by date
@@ -406,9 +456,9 @@ export default function HomePage() {
       return;
     }
 
-    // Save to IndexedDB
-    const exportData: MonthlyExport = {
-      month: 'all',
+    // Save to IndexedDB with current month
+    const exportDataObj: MonthlyExport = {
+      month: currentMonth,
       tableTitle: titles[selectedIndex],
       columnName: selectedHeatmapColumn,
       chartData: allData,
@@ -416,7 +466,7 @@ export default function HomePage() {
     };
 
     try {
-      await saveMonthlyExport(exportData);
+      await saveMonthlyExport(exportDataObj);
       setExportType(type);
       setExportModalOpen(true);
     } catch (error) {
@@ -499,6 +549,51 @@ export default function HomePage() {
     return current && current.data.length > 0;
   }, [selectedIndex, tableSchemas]);
 
+  // Trigger tutorial when export becomes available
+  useEffect(() => {
+    if (showTutorial && hasDataToExport && selectedHeatmapColumn) {
+      setCurrentTrigger('export-ready');
+    }
+  }, [hasDataToExport, selectedHeatmapColumn, showTutorial]);
+
+  // Validate heatmap column when data changes
+  useEffect(() => {
+    if (selectedIndex === null || !selectedHeatmapColumn) return;
+    
+    const current = tableSchemas[selectedIndex];
+    if (!current) {
+      setSelectedHeatmapColumn(null);
+      return;
+    }
+    
+    // Check if the selected heatmap column still exists
+    if (!current.columns.includes(selectedHeatmapColumn)) {
+      setSelectedHeatmapColumn(null);
+      return;
+    }
+    
+    // Check if all values are still valid
+    const allValid = current.data.every((row) => {
+      const value = row[selectedHeatmapColumn];
+      if (value === '' || value === undefined) return true;
+      if (!isNaN(Number(value))) return true;
+      if (value.includes('/')) {
+        const parts = value.split('/');
+        if (parts.length === 2) {
+          const num = Number(parts[0].trim());
+          const denom = Number(parts[1].trim());
+          return !isNaN(num) && !isNaN(denom) && denom !== 0;
+        }
+      }
+      return false;
+    });
+    
+    // If data is no longer valid, clear the heatmap
+    if (!allValid) {
+      setSelectedHeatmapColumn(null);
+    }
+  }, [selectedIndex, selectedHeatmapColumn, tableSchemas]);
+
   // Toggle heatmap for a column
   const toggleHeatmap = (columnName: string) => {
     if (selectedIndex === null) return;
@@ -536,6 +631,11 @@ export default function HomePage() {
       setSelectedHeatmapColumn(null);
     } else {
       setSelectedHeatmapColumn(columnName);
+      
+      // Trigger tutorial progression
+      if (showTutorial) {
+        setCurrentTrigger('heatmap-enabled');
+      }
     }
   };
 
@@ -614,6 +714,11 @@ export default function HomePage() {
       });
       setCurrentRowData(emptyRow);
     }
+    
+    // Trigger tutorial progression
+    if (showTutorial) {
+      setCurrentTrigger('date-selected');
+    }
   };
 
   // TanStack Table configuration
@@ -659,26 +764,30 @@ export default function HomePage() {
         position: 'relative',
       }}
     >
-      {/* Export button with dropdown - top right */}
-      {hasDataToExport && selectedHeatmapColumn && (
-        <div
-          ref={exportDropdownRef}
+      {/* Tutorial */}
+      {showTutorial && <Tutorial onComplete={handleTutorialComplete} currentTrigger={currentTrigger} />}
+
+      {/* Export button with dropdown - top right - Always visible */}
+      <div
+        ref={exportDropdownRef}
+        data-tutorial="export-button"
+        style={{
+          position: 'absolute',
+          top: 20,
+          right: 20,
+          zIndex: 100,
+        }}
+      >
+        <button
+          onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
+          disabled={!hasDataToExport || !selectedHeatmapColumn}
           style={{
-            position: 'absolute',
-            top: 20,
-            right: 20,
-            zIndex: 100,
-          }}
-        >
-          <button
-            onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
-            style={{
-              background: '#2684FF',
-              border: 'none',
-              borderRadius: 8,
-              padding: '10px 16px',
-              cursor: 'pointer',
-              display: 'flex',
+            background: hasDataToExport && selectedHeatmapColumn ? '#2684FF' : '#ccc',
+            border: 'none',
+            borderRadius: 8,
+            padding: '10px 16px',
+            cursor: hasDataToExport && selectedHeatmapColumn ? 'pointer' : 'not-allowed',
+            display: 'flex',
               alignItems: 'center',
               gap: 8,
               color: '#fff',
@@ -772,7 +881,6 @@ export default function HomePage() {
             </div>
           )}
         </div>
-      )}
 
       {/* Left section: Calendar and Table Titles */}
       <div
@@ -784,7 +892,7 @@ export default function HomePage() {
         }}
       >
         {/* Calendar */}
-        <div style={{ flex: '0 0 auto' }}>
+        <div data-tutorial="calendar" style={{ flex: '0 0 auto' }}>
           <CalyraCalendar 
             clearToken={calendarClearToken} 
             onDateSelected={handleCalendarDateSelect}
@@ -815,6 +923,7 @@ export default function HomePage() {
             {/* Add new table input */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
               <TextInput
+                data-tutorial="table-input"
                 placeholder="New table title"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.currentTarget.value)}
@@ -823,13 +932,13 @@ export default function HomePage() {
                 }}
                 style={{ flex: 1 }}
               />
-              <Button onClick={addTitle} variant="filled" color="blue">
+              <Button onClick={addTitle} variant="filled" color="blue" data-tutorial="table-input-button">
                 Add
               </Button>
             </div>
 
             {/* Table list */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div data-tutorial="table-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {titles.length === 0 && (
                 <div style={{ color: '#666', fontSize: 14 }}>No tables yet. Add one above.</div>
               )}
@@ -870,6 +979,7 @@ export default function HomePage() {
                       {title}
                     </div>
                     <button
+                      data-tutorial="settings-icon"
                       onClick={(e) => {
                         e.stopPropagation();
                         openSettings(index);
@@ -947,7 +1057,7 @@ export default function HomePage() {
             {!selectedDate ? (
               // Column management mode
               <>
-                <div style={{ marginBottom: 16 }}>
+                <div data-tutorial="column-management" style={{ marginBottom: 16 }}>
                   <h3 style={{ margin: '0 0 12px 0', fontSize: 18 }}>Manage Columns</h3>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                     <TextInput
@@ -964,7 +1074,7 @@ export default function HomePage() {
                     </Button>
                   </div>
                   
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <div data-tutorial="column-chips" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {currentSchema?.columns.map((col) => (
                       <div
                         key={col}
@@ -1024,7 +1134,7 @@ export default function HomePage() {
             ) : (
               // Row entry mode
               <>
-                <div style={{ marginBottom: 16 }}>
+                <div data-tutorial="row-entry" style={{ marginBottom: 16 }}>
                   <h3 style={{ margin: '0 0 12px 0', fontSize: 18 }}>
                     {currentSchema?.data.some((row) => row.Date === selectedDate) ? 'Edit Row Data' : 'Enter Row Data'}
                   </h3>
@@ -1056,6 +1166,7 @@ export default function HomePage() {
 
             {/* Table display */}
             <div
+              data-tutorial="table-display"
               style={{
                 flex: 1,
                 overflowY: 'auto',

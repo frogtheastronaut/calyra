@@ -1,0 +1,6 @@
+/* Tutorial highlighting */
+[data-tutorial-active="true"] {
+  position: relative;
+  z-index: 9999 !important;
+  border-radius: 6px;
+}
