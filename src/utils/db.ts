@@ -174,7 +174,7 @@ export const deleteDatabase = async (): Promise<void> => {
 
 // Expose reset function to window for console access
 if (typeof window !== 'undefined') {
-  (window as any).resetCalyra = async () => {
+  (window as Window & { resetCalyra?: () => Promise<void> }).resetCalyra = async () => {
     try {
       await deleteDatabase();
       console.log('🔄 Reloading page...');

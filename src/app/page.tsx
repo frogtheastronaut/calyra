@@ -64,7 +64,7 @@ export default function HomePage() {
 
   // Tutorial state
   const [showTutorial, setShowTutorial] = useState(false);
-  const [tutorialCompleted, setTutorialCompleted] = useState(false);
+  const [, setTutorialCompleted] = useState(false);
   const [currentTrigger, setCurrentTrigger] = useState('auto');
 
   // Loading state
@@ -187,6 +187,7 @@ export default function HomePage() {
       
       // Remove the column from all rows
       let newData = current.data.map((row) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [columnName]: _, ...rest } = row;
         return rest;
       });
@@ -287,6 +288,7 @@ export default function HomePage() {
   };
 
   // Update an existing cell in the table
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const updateCell = (rowIndex: number, columnId: string, value: string) => {
     if (selectedIndex === null) return;
     
@@ -745,7 +747,7 @@ export default function HomePage() {
         );
       },
     }));
-  }, [currentSchema, selectedIndex]);
+  }, [currentSchema]);
 
   const table = useReactTable({
     data: currentSchema?.data || [],
