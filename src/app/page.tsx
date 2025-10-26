@@ -43,20 +43,8 @@ export default function HomePage() {
             lineHeight: 1.7,
           }}
         >
-          This is a tool for people who think in data, not dates.<br></br>
+          This is a free and open-source tool for everyone who think in data, not dates.<br></br>
           Calyra combines a calendar and spreadsheet so you can log your progress, visualize trends, and turn your data into insight.
-        </p>
-        <p
-          style={{
-            fontSize: 'var(--font-size-base)',
-            color: 'var(--color-text)',
-            maxWidth: '650px',
-            marginBottom: 'var(--spacing-2xl)',
-            lineHeight: 1.6,
-            opacity: 0.8,
-          }}
-        >
-          No account is needed to get started! For cloud saving, more graphs, and more features, create a <span style={{ color: 'var(--color-secondary)', fontWeight: 'var(--font-weight-semibold)' }}>Calyra Pro</span> account.
         </p>
         <Link
           href="/app"

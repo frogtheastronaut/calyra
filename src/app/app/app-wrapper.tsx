@@ -24,7 +24,6 @@ export default function AppLayout() {
 
   return (
     <>
-      {/* Navbar */}
       <nav
         className="navbar"
         style={{
@@ -40,7 +39,6 @@ export default function AppLayout() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2xl)', width: '100%' }}>
-          {/* Logo/Brand */}
           <Link 
             href="/"
             className="logo"
@@ -51,28 +49,7 @@ export default function AppLayout() {
             Calyra
           </Link>
 
-          {/* Navigation Links - moved to the right but not at the end */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-lg)', marginLeft: 'auto', marginRight: 'var(--spacing-md)' }}>
-            <Link
-              href="/pricing"
-              className="nav-link"
-              style={{
-                textDecoration: 'none',
-              }}
-            >
-              Pricing
-            </Link>
-            <Link
-              href="/account"
-              className="nav-link"
-              style={{
-                textDecoration: 'none',
-              }}
-            >
-              Account
-            </Link>
-
-            {/* Export button with dropdown */}
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
@@ -110,7 +87,6 @@ export default function AppLayout() {
                 <span>Export</span>
               </button>
 
-              {/* Dropdown menu */}
               {exportDropdownOpen && (
                 <div
                   style={{

@@ -20,7 +20,6 @@ export default function Navbar() {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2xl)', width: '100%' }}>
-        {/* Logo/Brand */}
         <Link 
           href="/"
           className="logo"
@@ -30,28 +29,6 @@ export default function Navbar() {
         >
           Calyra
         </Link>
-
-        {/* Navigation Links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xl)', marginLeft: 'auto' }}>
-          <Link
-            href="/pricing"
-            className="nav-link"
-            style={{
-              textDecoration: 'none',
-            }}
-          >
-            Pricing
-          </Link>
-          <Link
-            href="/account"
-            className="nav-link"
-            style={{
-              textDecoration: 'none',
-            }}
-          >
-            Account
-          </Link>
-        </div>
       </div>
     </nav>
   );
