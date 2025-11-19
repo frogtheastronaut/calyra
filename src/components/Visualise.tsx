@@ -1,8 +1,13 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
-import { Select, Button } from '@mantine/core';
-import ExportGraph from './ExportGraph';
+import { Select } from '@mantine/core';
+import LineGraph from './visualizations/LineGraph';
+import BarGraph from './visualizations/BarGraph';
+import AreaGraph from './visualizations/AreaGraph';
+import ScatterPlot from './visualizations/ScatterPlot';
+import SmoothLineGraph from './visualizations/SmoothLineGraph';
+import StepLineGraph from './visualizations/StepLineGraph';
 import CalyraCalendar from './calendar';
 import type { AppState } from '../utils/db';
 
@@ -10,13 +15,25 @@ type VisualiseProps = {
   appState: AppState;
 };
 
+type VisualizationConfig = {
+  id: string;
+  name: string;
+  component: React.ComponentType<{ data: { date: string; value: number }[]; columnName: string }>;
+};
+
+const chartVisualizations: VisualizationConfig[] = [
+  { id: 'line', name: 'Line Chart', component: LineGraph },
+  { id: 'bar', name: 'Bar Chart', component: BarGraph },
+  { id: 'area', name: 'Area Chart', component: AreaGraph },
+  { id: 'smooth', name: 'Smooth Line', component: SmoothLineGraph },
+  { id: 'step', name: 'Step Line', component: StepLineGraph },
+  { id: 'scatter', name: 'Scatter Plot', component: ScatterPlot },
+];
+
 export default function Visualise({ appState }: VisualiseProps) {
   const [selectedTableIndex, setSelectedTableIndex] = useState<string | null>(null);
   const [selectedColumn, setSelectedColumn] = useState<string | null>(null);
-  const [visualizationType, setVisualizationType] = useState<'graph' | 'heatmap'>('graph');
-  
-  const graphCanvasRef = useRef<HTMLDivElement>(null);
-  const heatmapCanvasRef = useRef<HTMLDivElement>(null);
+  const [currentVizIndex, setCurrentVizIndex] = useState<number>(0);
 
   // Get table options for dropdown
   const tableOptions = useMemo(() => {
@@ -126,17 +143,30 @@ export default function Visualise({ appState }: VisualiseProps) {
     return heatmap;
   }, [selectedTableIndex, selectedColumn, appState.tableSchemas]);
 
-  // Download graph as PNG
-  const downloadGraph = async () => {
-    const canvasRef = visualizationType === 'heatmap' ? heatmapCanvasRef : graphCanvasRef;
-    if (!canvasRef.current) return;
+  // Download visualization as PNG
+  const downloadVisualization = async (element: HTMLDivElement, vizName: string) => {
+    if (!element) return;
 
     try {
+      // Hide download button and title before capturing
+      const downloadBtn = element.querySelector('[data-download-btn]') as HTMLElement;
+      const title = element.querySelector('[data-viz-title]') as HTMLElement;
+      const metadata = element.querySelector('[data-viz-metadata]') as HTMLElement;
+      
+      if (downloadBtn) downloadBtn.style.display = 'none';
+      if (title) title.style.display = 'none';
+      if (metadata) metadata.style.display = 'block';
+
       const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(canvasRef.current, {
+      const canvas = await html2canvas(element, {
         backgroundColor: '#ffffff',
         scale: 2,
       });
+
+      // Show download button and title again, hide metadata
+      if (downloadBtn) downloadBtn.style.display = 'flex';
+      if (title) title.style.display = 'block';
+      if (metadata) metadata.style.display = 'none';
 
       canvas.toBlob((blob: Blob | null) => {
         if (!blob) return;
@@ -145,15 +175,25 @@ export default function Visualise({ appState }: VisualiseProps) {
         const link = document.createElement('a');
         const timestamp = new Date().toISOString().split('T')[0];
         const tableName = selectedTableIndex !== null ? appState.titles[Number(selectedTableIndex)] : 'data';
-        const filename = `${tableName}_${selectedColumn}_${visualizationType}_${timestamp}.png`;
+        const filename = `${tableName}_${selectedColumn}_${vizName}_${timestamp}.png`;
         link.download = filename;
         link.href = url;
         link.click();
         URL.revokeObjectURL(url);
       });
     } catch (error) {
-      console.error('Failed to download graph:', error);
-      alert('Failed to download graph.');
+      console.error('Failed to download visualization:', error);
+      alert('Failed to download visualization.');
+    }
+  };
+
+  // Navigate between visualizations
+  const navigateViz = (direction: 'left' | 'right') => {
+    const totalVizCount = chartVisualizations.length + 1; // +1 for heatmap
+    if (direction === 'left') {
+      setCurrentVizIndex((prev) => (prev - 1 + totalVizCount) % totalVizCount);
+    } else {
+      setCurrentVizIndex((prev) => (prev + 1) % totalVizCount);
     }
   };
 
@@ -178,7 +218,7 @@ export default function Visualise({ appState }: VisualiseProps) {
     >
       <div
         style={{
-          maxWidth: 1200,
+          maxWidth: 1600,
           margin: '0 auto',
           width: '100%',
         }}
@@ -231,19 +271,6 @@ export default function Visualise({ appState }: VisualiseProps) {
             onChange={setSelectedColumn}
             style={{ flex: 1, minWidth: 200 }}
             disabled={columnOptions.length === 0 || selectedTableIndex === null}
-          />
-
-          <Select
-            label="Visualization Type"
-            placeholder="Choose type"
-            data={[
-              { value: 'graph', label: 'Line Graph' },
-              { value: 'heatmap', label: 'Calendar Heatmap' },
-            ]}
-            value={visualizationType}
-            onChange={(value) => setVisualizationType(value as 'graph' | 'heatmap')}
-            style={{ flex: 1, minWidth: 200 }}
-            disabled={!hasData}
           />
         </div>
 
@@ -329,76 +356,263 @@ export default function Visualise({ appState }: VisualiseProps) {
             </p>
           </div>
         ) : (
-          <div
-            style={{
-              position: 'relative',
-              backgroundColor: 'var(--color-white)',
-              borderRadius: 12,
-              padding: 24,
-              boxShadow: 'var(--shadow-lg)',
-            }}
-          >
-            {/* Download button */}
+          /* Single visualization view with arrow navigation */
+          <div style={{ position: 'relative' }}>
+            {/* Left Arrow */}
             <button
-              onClick={downloadGraph}
+              onClick={() => navigateViz('left')}
               style={{
                 position: 'absolute',
-                top: 16,
-                right: 16,
-                background: 'var(--color-accent)',
+                left: -20,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
                 border: 'none',
-                borderRadius: 8,
-                padding: 8,
+                backgroundColor: 'var(--color-white)',
+                boxShadow: 'var(--shadow-lg)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--color-white)',
                 zIndex: 10,
                 transition: 'all 0.2s ease',
-                boxShadow: 'var(--shadow-md)',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.1)';
-                e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+                e.currentTarget.style.backgroundColor = 'var(--color-gray-100)';
+                e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                e.currentTarget.style.backgroundColor = 'var(--color-white)';
+                e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
               }}
-              title="Download visualization"
             >
-              <span style={{ fontFamily: 'Material Icons', fontSize: 20 }}>download</span>
+              <span style={{ fontFamily: 'Material Icons', fontSize: 28, color: 'var(--color-text)' }}>
+                chevron_left
+              </span>
             </button>
 
-            {/* Graph/Heatmap */}
-            {visualizationType === 'graph' ? (
+            {/* Right Arrow */}
+            <button
+              onClick={() => navigateViz('right')}
+              style={{
+                position: 'absolute',
+                right: -20,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                border: 'none',
+                backgroundColor: 'var(--color-white)',
+                boxShadow: 'var(--shadow-lg)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10,
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--color-gray-100)';
+                e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--color-white)';
+                e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+              }}
+            >
+              <span style={{ fontFamily: 'Material Icons', fontSize: 28, color: 'var(--color-text)' }}>
+                chevron_right
+              </span>
+            </button>
+
+            <div
+              style={{
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'center',
+              }}
+            >
+            {/* Single Chart Visualization */}
+            {currentVizIndex < chartVisualizations.length ? (() => {
+              const viz = chartVisualizations[currentVizIndex];
+              const VizComponent = viz.component;
+              const tableName = selectedTableIndex !== null ? appState.titles[Number(selectedTableIndex)] : '';
+              return (
+                <div
+                  key={viz.id}
+                  style={{
+                    backgroundColor: 'var(--color-white)',
+                    borderRadius: 12,
+                    padding: 24,
+                    boxShadow: 'var(--shadow-lg)',
+                    position: 'relative',
+                    width: '100%',
+                    maxWidth: 900,
+                  }}
+                >
+                  <h3 data-viz-title style={{ 
+                    margin: '0 0 20px 0', 
+                    fontSize: 20, 
+                    fontWeight: 600, 
+                    color: 'var(--color-text)',
+                    paddingRight: 48,
+                  }}>
+                    {viz.name}
+                  </h3>
+                  <button
+                    data-download-btn
+                    onClick={(e) => {
+                      const card = e.currentTarget.parentElement;
+                      if (card) downloadVisualization(card as HTMLDivElement, viz.id);
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: 20,
+                      right: 20,
+                      background: 'var(--color-accent)',
+                      border: 'none',
+                      borderRadius: 8,
+                      width: 40,
+                      height: 40,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--color-white)',
+                      zIndex: 10,
+                      transition: 'all 0.2s ease',
+                      boxShadow: 'var(--shadow-md)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                      e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                    }}
+                    title={`Download ${viz.name}`}
+                  >
+                    <span style={{ fontFamily: 'Material Icons', fontSize: 24 }}>download</span>
+                  </button>
+                  <div
+                    style={{
+                      width: '100%',
+                      height: 500,
+                    }}
+                  >
+                    <VizComponent data={chartData} columnName={selectedColumn || ''} />
+                  </div>
+                  <div data-viz-metadata style={{
+                    display: 'none',
+                    fontSize: 11,
+                    color: 'var(--color-gray-600)',
+                    marginTop: 16,
+                    paddingTop: 16,
+                    borderTop: '1px solid var(--color-gray-200)',
+                    lineHeight: 1.5,
+                  }}>
+                    <div><strong>Table:</strong> {tableName}</div>
+                    <div><strong>Column:</strong> {selectedColumn}</div>
+                    <div style={{ marginTop: 8, fontSize: 10, opacity: 0.7 }}>Generated with Calyra</div>
+                  </div>
+                </div>
+              );
+            })() : (
+            /* Calendar Heatmap */
+            <div
+              style={{
+                backgroundColor: 'var(--color-white)',
+                borderRadius: 12,
+                padding: 24,
+                boxShadow: 'var(--shadow-lg)',
+                position: 'relative',
+                width: '100%',
+                maxWidth: 900,
+              }}
+            >
+              <h3 data-viz-title style={{ 
+                margin: '0 0 20px 0', 
+                fontSize: 20, 
+                fontWeight: 600, 
+                color: 'var(--color-text)',
+                paddingRight: 48,
+              }}>
+                Calendar Heatmap
+              </h3>
+              <button
+                data-download-btn
+                onClick={(e) => {
+                  const card = e.currentTarget.parentElement;
+                  if (card) downloadVisualization(card as HTMLDivElement, 'heatmap');
+                }}
+                style={{
+                  position: 'absolute',
+                  top: 20,
+                  right: 20,
+                  background: 'var(--color-accent)',
+                  border: 'none',
+                  borderRadius: 8,
+                  width: 40,
+                  height: 40,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--color-white)',
+                  zIndex: 10,
+                  transition: 'all 0.2s ease',
+                  boxShadow: 'var(--shadow-md)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.1)';
+                  e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                }}
+                title="Download Calendar Heatmap"
+              >
+                <span style={{ fontFamily: 'Material Icons', fontSize: 24 }}>download</span>
+              </button>
               <div
-                ref={graphCanvasRef}
                 style={{
                   width: '100%',
                   height: 500,
-                }}
-              >
-                <ExportGraph data={chartData} columnName={selectedColumn} />
-              </div>
-            ) : (
-              <div
-                ref={heatmapCanvasRef}
-                style={{
-                  width: '100%',
                   display: 'flex',
                   justifyContent: 'center',
-                  padding: 20,
+                  alignItems: 'center',
+                  pointerEvents: 'none',
                 }}
               >
-                <CalyraCalendar 
-                  clearToken={0} 
-                  onDateSelected={() => {}}
-                  heatmapData={heatmapData}
-                />
+                <div style={{ transform: 'scale(0.9)', transformOrigin: 'center' }}>
+                  <CalyraCalendar 
+                    clearToken={0} 
+                    onDateSelected={() => {}}
+                    heatmapData={heatmapData}
+                  />
+                </div>
               </div>
+              <div data-viz-metadata style={{
+                display: 'none',
+                fontSize: 11,
+                color: 'var(--color-gray-600)',
+                marginTop: 16,
+                paddingTop: 16,
+                borderTop: '1px solid var(--color-gray-200)',
+                lineHeight: 1.5,
+              }}>
+                <div><strong>Table:</strong> {selectedTableIndex !== null ? appState.titles[Number(selectedTableIndex)] : ''}</div>
+                <div><strong>Column:</strong> {selectedColumn}</div>
+                <div style={{ marginTop: 8, fontSize: 10, opacity: 0.7 }}>Generated with Calyra</div>
+              </div>
+            </div>
             )}
+            </div>
           </div>
         )}
       </div>

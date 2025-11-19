@@ -8,7 +8,7 @@ type TutorialStep = {
   title: string;
   description: string;
   position: 'top' | 'bottom' | 'left' | 'right' | 'center';
-  trigger: 'auto' | 'table-created' | 'table-selected' | 'column-added' | 'heatmap-enabled' | 'date-selected' | 'row-added' | 'export-ready';
+  trigger: 'auto' | 'table-created' | 'table-selected' | 'column-added' | 'heatmap-enabled' | 'date-selected' | 'row-added' | 'visualise-tab';
 };
 
 const tutorialSteps: TutorialStep[] = [
@@ -69,11 +69,11 @@ const tutorialSteps: TutorialStep[] = [
     trigger: 'row-added',
   },
   {
-    target: 'export-button',
-    title: 'Export Your Progress',
-    description: 'Click on data chips, then click export to download your tables as graphs.',
+    target: 'visualise-tab',
+    title: 'Visualise Your Progress 📊',
+    description: 'Switch to the Visualise tab to see your data in beautiful graphs and heatmaps. You can download any visualization as an image!',
     position: 'center',
-    trigger: 'auto', // Changed to center modal
+    trigger: 'auto',
   },
   {
     target: 'complete',
@@ -299,7 +299,7 @@ export default function Tutorial({ onComplete, currentTrigger }: TutorialProps) 
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {/* Show Next button ONLY for: column-chips, table-display */}
-            {(step.target === 'column-chips' || step.target === 'table-display' || step.target === 'export-button') && (
+            {(step.target === 'column-chips' || step.target === 'table-display') && (
               <Button size="xs" variant="filled" color="blue" onClick={handleNext}>
                 Next
               </Button>

@@ -6,3 +6,8 @@
   z-index: 9999 !important;
   border-radius: 6px;
 }
+
+/* Hide scrollbar for visualization grid */
+.viz-grid::-webkit-scrollbar {
+  display: none;
+}
