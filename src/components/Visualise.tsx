@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Select } from '@mantine/core';
+import gsap from 'gsap';
 import LineGraph from './visualizations/LineGraph';
 import BarGraph from './visualizations/BarGraph';
 import AreaGraph from './visualizations/AreaGraph';
@@ -34,6 +35,8 @@ export default function Visualise({ appState }: VisualiseProps) {
   const [selectedTableIndex, setSelectedTableIndex] = useState<string | null>(null);
   const [selectedColumn, setSelectedColumn] = useState<string | null>(null);
   const [currentVizIndex, setCurrentVizIndex] = useState<number>(0);
+  const vizContainerRef = useRef<HTMLDivElement>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   // Get table options for dropdown
   const tableOptions = useMemo(() => {
@@ -173,9 +176,8 @@ export default function Visualise({ appState }: VisualiseProps) {
         
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        const timestamp = new Date().toISOString().split('T')[0];
         const tableName = selectedTableIndex !== null ? appState.titles[Number(selectedTableIndex)] : 'data';
-        const filename = `${tableName}_${selectedColumn}_${vizName}_${timestamp}.png`;
+        const filename = `${tableName}_${selectedColumn}.png`;
         link.download = filename;
         link.href = url;
         link.click();
@@ -187,14 +189,45 @@ export default function Visualise({ appState }: VisualiseProps) {
     }
   };
 
-  // Navigate between visualizations
+  // Navigate between visualizations with slide animation
   const navigateViz = (direction: 'left' | 'right') => {
+    if (isAnimating || !vizContainerRef.current) return;
+    
     const totalVizCount = chartVisualizations.length + 1; // +1 for heatmap
-    if (direction === 'left') {
-      setCurrentVizIndex((prev) => (prev - 1 + totalVizCount) % totalVizCount);
-    } else {
-      setCurrentVizIndex((prev) => (prev + 1) % totalVizCount);
-    }
+    setIsAnimating(true);
+    
+    const slideDistance = 100;
+    
+    // Slide out
+    gsap.to(vizContainerRef.current, {
+      x: direction === 'left' ? slideDistance : -slideDistance,
+      opacity: 0,
+      duration: 0.4,
+      ease: 'power2.inOut',
+      onComplete: () => {
+        // Update index
+        if (direction === 'left') {
+          setCurrentVizIndex((prev) => (prev - 1 + totalVizCount) % totalVizCount);
+        } else {
+          setCurrentVizIndex((prev) => (prev + 1) % totalVizCount);
+        }
+        
+        // Slide in from opposite side
+        if (vizContainerRef.current) {
+          gsap.fromTo(
+            vizContainerRef.current,
+            { x: direction === 'left' ? -slideDistance : slideDistance, opacity: 0 },
+            {
+              x: 0,
+              opacity: 1,
+              duration: 0.4,
+              ease: 'power2.inOut',
+              onComplete: () => setIsAnimating(false),
+            }
+          );
+        }
+      },
+    });
   };
 
   // Reset column selection when table changes
@@ -431,6 +464,7 @@ export default function Visualise({ appState }: VisualiseProps) {
             </button>
 
             <div
+              ref={vizContainerRef}
               style={{
                 width: '100%',
                 display: 'flex',
@@ -446,24 +480,11 @@ export default function Visualise({ appState }: VisualiseProps) {
                 <div
                   key={viz.id}
                   style={{
-                    backgroundColor: 'var(--color-white)',
-                    borderRadius: 12,
-                    padding: 24,
-                    boxShadow: 'var(--shadow-lg)',
                     position: 'relative',
                     width: '100%',
                     maxWidth: 900,
                   }}
                 >
-                  <h3 data-viz-title style={{ 
-                    margin: '0 0 20px 0', 
-                    fontSize: 20, 
-                    fontWeight: 600, 
-                    color: 'var(--color-text)',
-                    paddingRight: 48,
-                  }}>
-                    {viz.name}
-                  </h3>
                   <button
                     data-download-btn
                     onClick={(e) => {
@@ -472,8 +493,8 @@ export default function Visualise({ appState }: VisualiseProps) {
                     }}
                     style={{
                       position: 'absolute',
-                      top: 20,
-                      right: 20,
+                      top: 0,
+                      right: -50,
                       background: 'var(--color-accent)',
                       border: 'none',
                       borderRadius: 8,
@@ -526,24 +547,11 @@ export default function Visualise({ appState }: VisualiseProps) {
             /* Calendar Heatmap */
             <div
               style={{
-                backgroundColor: 'var(--color-white)',
-                borderRadius: 12,
-                padding: 24,
-                boxShadow: 'var(--shadow-lg)',
                 position: 'relative',
                 width: '100%',
                 maxWidth: 900,
               }}
             >
-              <h3 data-viz-title style={{ 
-                margin: '0 0 20px 0', 
-                fontSize: 20, 
-                fontWeight: 600, 
-                color: 'var(--color-text)',
-                paddingRight: 48,
-              }}>
-                Calendar Heatmap
-              </h3>
               <button
                 data-download-btn
                 onClick={(e) => {
@@ -552,8 +560,8 @@ export default function Visualise({ appState }: VisualiseProps) {
                 }}
                 style={{
                   position: 'absolute',
-                  top: 20,
-                  right: 20,
+                  top: 0,
+                  right: 0,
                   background: 'var(--color-accent)',
                   border: 'none',
                   borderRadius: 8,
