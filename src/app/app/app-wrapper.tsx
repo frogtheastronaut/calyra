@@ -1,26 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AppPage from './app-page';
+import Visualise from '../../components/Visualise';
 import Link from 'next/link';
+import { loadAppState, type AppState } from '../../utils/db';
 import '../colors.css';
 
 export default function AppLayout() {
-  const [hasDataToExport, setHasDataToExport] = useState(false);
-  const [hasHeatmap, setHasHeatmap] = useState(false);
-  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'calendar' | 'visualise'>('calendar');
+  const [appState, setAppState] = useState<AppState>({ titles: [], tableSchemas: {} });
 
-  const handleExportStateChange = (hasData: boolean, hasHeatmapEnabled: boolean) => {
-    setHasDataToExport(hasData);
-    setHasHeatmap(hasHeatmapEnabled);
-  };
+  // Load app state for Visualise tab
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const savedState = await loadAppState();
+        if (savedState) {
+          setAppState(savedState);
+        }
+      } catch (error) {
+        console.error('Failed to load data from IndexedDB:', error);
+      }
+    };
 
-  const handleExportClick = (type: 'graph' | 'heatmap') => {
-    if (typeof window.__calyraExport === 'function') {
-      window.__calyraExport(type);
+    loadData();
+
+    // Re-load data whenever we switch to visualise tab
+    if (activeTab === 'visualise') {
+      loadData();
     }
-    setExportDropdownOpen(false);
-  };
+  }, [activeTab]);
 
   return (
     <>
@@ -49,109 +59,58 @@ export default function AppLayout() {
             Calyra
           </Link>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-lg)', marginLeft: 'auto', marginRight: 'var(--spacing-md)' }}>
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
-                disabled={!hasDataToExport || !hasHeatmap}
-                style={{
-                  background: hasDataToExport && hasHeatmap ? 'var(--color-accent)' : 'var(--color-gray-400)',
-                  border: 'none',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: 'var(--spacing-sm) var(--spacing-lg)',
-                  cursor: hasDataToExport && hasHeatmap ? 'pointer' : 'not-allowed',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--spacing-sm)',
-                  color: 'var(--color-white)',
-                  fontSize: 'var(--font-size-base)',
-                  fontWeight: 'var(--font-weight-semibold)',
-                  transition: 'all var(--transition-base)',
-                  boxShadow: hasDataToExport && hasHeatmap ? 'var(--shadow-md)' : 'none',
-                }}
-                onMouseEnter={(e) => {
-                  if (hasDataToExport && hasHeatmap) {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (hasDataToExport && hasHeatmap) {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-                  }
-                }}
-                title="Export data"
-              >
-                <span style={{ fontFamily: 'Material Icons', fontSize: 18 }}>upload</span>
-                <span>Export</span>
-              </button>
-
-              {exportDropdownOpen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + var(--spacing-sm))',
-                    right: 0,
-                    backgroundColor: 'var(--color-white)',
-                    borderRadius: 'var(--radius-lg)',
-                    boxShadow: 'var(--shadow-xl)',
-                    overflow: 'hidden',
-                    minWidth: '200px',
-                    zIndex: 101,
-                    border: '1px solid var(--color-gray-200)',
-                  }}
-                >
-                  <button
-                    onClick={() => handleExportClick('graph')}
-                    style={{
-                      width: '100%',
-                      padding: 'var(--spacing-sm) var(--spacing-md)',
-                      border: 'none',
-                      background: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 'var(--spacing-sm)',
-                      fontSize: 'var(--font-size-sm)',
-                      color: 'var(--color-text)',
-                      transition: 'background-color var(--transition-fast)',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-gray-50)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <span style={{ fontFamily: 'Material Icons', fontSize: 20, color: 'var(--color-primary)' }}>
-                      show_chart
-                    </span>
-                    <span>Export to Line Graph</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleExportClick('heatmap')}
-                    style={{
-                      width: '100%',
-                      padding: 'var(--spacing-sm) var(--spacing-md)',
-                      border: 'none',
-                      background: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 'var(--spacing-sm)',
-                      fontSize: 'var(--font-size-sm)',
-                      color: 'var(--color-text)',
-                      transition: 'background-color var(--transition-fast)',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-gray-50)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <span style={{ fontFamily: 'Material Icons', fontSize: 20, color: 'var(--color-accent)' }}>
-                      calendar_month
-                    </span>
-                    <span>Export to Heatmap</span>
-                  </button>
-                </div>
-              )}
-            </div>
+          {/* Tab Navigation */}
+          <div 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              marginLeft: 'auto',
+              backgroundColor: 'var(--color-white)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '4px',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+          >
+            <button
+              onClick={() => setActiveTab('calendar')}
+              style={{
+                background: activeTab === 'calendar' ? 'var(--color-primary)' : 'transparent',
+                color: activeTab === 'calendar' ? 'var(--color-white)' : 'var(--color-text)',
+                border: 'none',
+                borderRadius: 'var(--radius-md)',
+                padding: 'var(--spacing-sm) var(--spacing-lg)',
+                cursor: 'pointer',
+                fontSize: 'var(--font-size-base)',
+                fontWeight: 'var(--font-weight-semibold)',
+                transition: 'all var(--transition-fast)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-xs)',
+              }}
+            >
+              <span style={{ fontFamily: 'Material Icons', fontSize: 18 }}>calendar_month</span>
+              <span>Calendar</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('visualise')}
+              style={{
+                background: activeTab === 'visualise' ? 'var(--color-primary)' : 'transparent',
+                color: activeTab === 'visualise' ? 'var(--color-white)' : 'var(--color-text)',
+                border: 'none',
+                borderRadius: 'var(--radius-md)',
+                padding: 'var(--spacing-sm) var(--spacing-lg)',
+                cursor: 'pointer',
+                fontSize: 'var(--font-size-base)',
+                fontWeight: 'var(--font-weight-semibold)',
+                transition: 'all var(--transition-fast)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-xs)',
+              }}
+            >
+              <span style={{ fontFamily: 'Material Icons', fontSize: 18 }}>bar_chart</span>
+              <span>Visualise</span>
+            </button>
           </div>
         </div>
       </nav>
@@ -163,10 +122,11 @@ export default function AppLayout() {
           height: 'calc(100vh - var(--navbar-height))',
         }}
       >
-        <AppPage 
-          onExportStateChange={handleExportStateChange}
-          onExportClick={() => {}}
-        />
+        {activeTab === 'calendar' ? (
+          <AppPage />
+        ) : (
+          <Visualise appState={appState} />
+        )}
       </div>
     </>
   );

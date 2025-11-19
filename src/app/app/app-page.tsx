@@ -1,18 +1,16 @@
 'use client';
 
 import CalyraCalendar from '../../components/calendar';
-import ExportGraph from '../../components/ExportGraph';
 import Tutorial from '../../components/Tutorial';
 import { Box, Button, TextInput, Modal } from '@mantine/core';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
   flexRender,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { saveAppState, loadAppState, saveMonthlyExport, type AppState, type MonthlyExport } from '../../utils/db';
-import dayjs from 'dayjs';
+import { saveAppState, loadAppState, type AppState } from '../../utils/db';
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
 
@@ -25,12 +23,7 @@ type TableSchema = {
   data: TableData[];
 };
 
-interface AppPageProps {
-  onExportStateChange?: (hasData: boolean, hasHeatmap: boolean) => void;
-  onExportClick?: () => void;
-}
-
-export default function AppPage({ onExportStateChange, onExportClick }: AppPageProps) {
+export default function AppPage() {
   // Table titles and selection
   const [titles, setTitles] = useState<string[]>([]);
   const [newTitle, setNewTitle] = useState('');
@@ -56,14 +49,6 @@ export default function AppPage({ onExportStateChange, onExportClick }: AppPageP
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [settingsTableIndex, setSettingsTableIndex] = useState<number | null>(null);
   const [editedTableName, setEditedTableName] = useState('');
-
-  // Export modal state
-  const [exportModalOpen, setExportModalOpen] = useState(false);
-  const [exportType, setExportType] = useState<'graph' | 'heatmap'>('graph');
-  const exportCanvasRef = useRef<HTMLDivElement>(null);
-  const heatmapCanvasRef = useRef<HTMLDivElement>(null);
-
-  // Export dropdown state (managed by parent) - local state removed
 
   // Tutorial state
   const [showTutorial, setShowTutorial] = useState(false);
@@ -119,186 +104,6 @@ export default function AppPage({ onExportStateChange, onExportClick }: AppPageP
 
     saveData();
   }, [titles, tableSchemas, isLoaded]);
-
-  // Check if there's any data to export
-  const hasDataToExport = useMemo(() => {
-    if (selectedIndex === null) return false;
-    const current = tableSchemas[selectedIndex];
-    return current && current.data.length > 0;
-  }, [selectedIndex, tableSchemas]);
-
-  // Notify parent component of export state
-  useEffect(() => {
-    if (onExportStateChange) {
-      onExportStateChange(hasDataToExport, selectedHeatmapColumn !== null);
-    }
-  }, [hasDataToExport, selectedHeatmapColumn, onExportStateChange]);
-
-  // Export all data for the selected table/column
-  const exportData = useMemo(() => {
-    return async (type: 'graph' | 'heatmap') => {
-    if (selectedIndex === null || !selectedHeatmapColumn) {
-      alert('Please select a table and enable heatmap visualization on a column before exporting.');
-      return;
-    }
-
-    // Get current month in YYYY-MM format
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-    // Check if already exported this month
-    const { getMonthlyExport } = await import('../../utils/db');
-    const existingExport = await getMonthlyExport(currentMonth, titles[selectedIndex], selectedHeatmapColumn);
-    
-    if (existingExport) {
-      const exportDate = new Date(existingExport.generatedAt);
-      const formattedDate = exportDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-      alert(`You've already exported this data this month on ${formattedDate}. You can export again next month.`);
-      return;
-    }
-
-    const current = tableSchemas[selectedIndex];
-    
-    // Get all data and sort by date
-    const allData = current.data
-      .map((row) => {
-        const value = row[selectedHeatmapColumn];
-        let numericValue = 0;
-        
-        if (value) {
-          if (value.includes('/')) {
-            const parts = value.split('/');
-            if (parts.length === 2) {
-              const num = Number(parts[0].trim());
-              const denom = Number(parts[1].trim());
-              if (!isNaN(num) && !isNaN(denom) && denom !== 0) {
-                numericValue = num / denom;
-              }
-            }
-          } else {
-            numericValue = Number(value);
-            if (isNaN(numericValue)) numericValue = 0;
-          }
-        }
-        
-        return {
-          date: row.Date,
-          value: numericValue,
-        };
-      })
-      .sort((a, b) => a.date.localeCompare(b.date));
-
-    if (allData.length === 0) {
-      alert('No data found to export.');
-      return;
-    }
-
-    // Save to IndexedDB with current month
-    const exportDataObj: MonthlyExport = {
-      month: currentMonth,
-      tableTitle: titles[selectedIndex],
-      columnName: selectedHeatmapColumn,
-      chartData: allData,
-      generatedAt: Date.now(),
-    };
-
-    try {
-      await saveMonthlyExport(exportDataObj);
-      setExportType(type);
-      setExportModalOpen(true);
-    } catch (error) {
-      console.error('Failed to save export:', error);
-      alert('Failed to save export data.');
-    }
-  };
-  }, [selectedIndex, selectedHeatmapColumn, tableSchemas, titles]);
-
-  // Expose export function to parent
-  useEffect(() => {
-    if (onExportClick) {
-      window.__calyraExport = (type: 'graph' | 'heatmap') => {
-        // call the memoized exportData
-        void exportData(type);
-      };
-    }
-    return () => {
-      if (window.__calyraExport) delete window.__calyraExport;
-    };
-  }, [onExportClick, exportData]);
-
-  // Download the graph as PNG
-  const downloadGraph = async () => {
-    const canvasRef = exportType === 'heatmap' ? heatmapCanvasRef : exportCanvasRef;
-    if (!canvasRef.current) return;
-
-    try {
-      // Use html2canvas to capture the graph
-      const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(canvasRef.current, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-      });
-
-      // Convert to blob and download
-      canvas.toBlob((blob: Blob | null) => {
-        if (!blob) return;
-        
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        const timestamp = dayjs().format('YYYY-MM-DD');
-        const filename = `${titles[selectedIndex!]}_${selectedHeatmapColumn}_${exportType}_${timestamp}.png`;
-        link.download = filename;
-        link.href = url;
-        link.click();
-        URL.revokeObjectURL(url);
-      });
-    } catch (error) {
-      console.error('Failed to download graph:', error);
-      alert('Failed to download graph.');
-    }
-  };
-
-  // Get current month's export data for display
-  const currentExportData = useMemo(() => {
-    if (selectedIndex === null || !selectedHeatmapColumn) return [];
-    
-    const current = tableSchemas[selectedIndex];
-    
-    return current.data
-      .map((row) => {
-        const value = row[selectedHeatmapColumn];
-        let numericValue = 0;
-        
-        if (value) {
-          if (value.includes('/')) {
-            const parts = value.split('/');
-            if (parts.length === 2) {
-              const num = Number(parts[0].trim());
-              const denom = Number(parts[1].trim());
-              if (!isNaN(num) && !isNaN(denom) && denom !== 0) {
-                numericValue = num / denom;
-              }
-            }
-          } else {
-            numericValue = Number(value);
-            if (isNaN(numericValue)) numericValue = 0;
-          }
-        }
-        
-        return {
-          date: row.Date,
-          value: numericValue,
-        };
-      })
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [selectedIndex, selectedHeatmapColumn, tableSchemas]);
-
-  // Trigger tutorial when export becomes available
-  useEffect(() => {
-    if (showTutorial && hasDataToExport && selectedHeatmapColumn) {
-      setCurrentTrigger('export-ready');
-    }
-  }, [hasDataToExport, selectedHeatmapColumn, showTutorial]);
 
   // Validate heatmap column when data changes
   useEffect(() => {
@@ -1185,81 +990,6 @@ export default function AppPage({ onExportStateChange, onExportClick }: AppPageP
             >
               Save Changes
             </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Export Modal */}
-      <Modal
-        opened={exportModalOpen}
-        onClose={() => setExportModalOpen(false)}
-        title={`Export ${exportType === 'graph' ? 'Line Graph' : 'Heatmap'} - ${selectedIndex !== null ? titles[selectedIndex] : ''} - ${selectedHeatmapColumn || ''}`}
-        size="xl"
-        centered
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Preview */}
-          {exportType === 'graph' ? (
-            <div 
-              ref={exportCanvasRef}
-              style={{ 
-                width: '100%', 
-                height: 400,
-                border: '1px solid #dee2e6',
-                borderRadius: 6,
-              }}
-            >
-              {currentExportData.length > 0 && selectedHeatmapColumn ? (
-                <ExportGraph 
-                  data={currentExportData} 
-                  columnName={selectedHeatmapColumn}
-                />
-              ) : (
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  height: '100%',
-                  color: '#666'
-                }}>
-                  No data available
-                </div>
-              )}
-            </div>
-          ) : (
-            <div 
-              ref={heatmapCanvasRef}
-              style={{ 
-                width: '100%', 
-                padding: 20,
-                border: '1px solid #dee2e6',
-                borderRadius: 6,
-                backgroundColor: '#fff',
-                display: 'flex',
-                justifyContent: 'center',
-              }}
-            >
-              <CalyraCalendar 
-                clearToken={0} 
-                onDateSelected={() => {}}
-                heatmapData={getHeatmapData}
-              />
-            </div>
-          )}
-
-          {/* Download button */}
-          <Button
-            onClick={downloadGraph}
-            variant="filled"
-            color="blue"
-            fullWidth
-            disabled={currentExportData.length === 0}
-          >
-            Download {exportType === 'graph' ? 'Graph' : 'Heatmap'}
-          </Button>
-
-          <div style={{ fontSize: 12, color: '#666', textAlign: 'center' }}>
-            Data saved to IndexedDB • {currentExportData.length} data points
           </div>
         </div>
       </Modal>
