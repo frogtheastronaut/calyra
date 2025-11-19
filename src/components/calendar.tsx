@@ -8,9 +8,10 @@ type CalyraCalendarProps = {
   clearToken?: number; // Incremented to clear selection from parent
   onDateSelected?: (date: string | null) => void; // Callback when date is selected/deselected
   heatmapData?: { [date: string]: number }; // Date -> numeric value mapping for heatmap
+  hideControls?: boolean; // Hide navigation arrows and outside dates
 };
 
-export default function CalyraCalendar({ clearToken, onDateSelected, heatmapData }: CalyraCalendarProps) {
+export default function CalyraCalendar({ clearToken, onDateSelected, heatmapData, hideControls }: CalyraCalendarProps) {
   const [selected, setSelected] = useState<string | null>(dayjs().format('YYYY-MM-DD'));
 
   // Clear selection when parent increments clearToken
@@ -73,6 +74,13 @@ export default function CalyraCalendar({ clearToken, onDateSelected, heatmapData
         };
       }}
       size="lg"
+      hideOutsideDates={hideControls}
+      withCellSpacing={false}
+      __onControlClick={hideControls ? () => {} : undefined}
+      __onDayKeyDown={hideControls ? () => {} : undefined}
+      styles={hideControls ? {
+        calendarHeader: { display: 'none' },
+      } : undefined}
     />
   );
 }

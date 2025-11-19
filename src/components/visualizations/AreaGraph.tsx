@@ -13,7 +13,7 @@ export default function AreaGraph({ data, columnName }: AreaGraphProps) {
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
           data={data}
-          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+          margin={{ top: 30, right: 40, left: 30, bottom: 80 }}
         >
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis 

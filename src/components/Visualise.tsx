@@ -205,6 +205,8 @@ export default function Visualise({ appState }: VisualiseProps) {
 
   const hasData = chartData.length > 0;
 
+  const totalVizCount = chartVisualizations.length + 1;
+
   return (
     <div
       style={{
@@ -213,7 +215,7 @@ export default function Visualise({ appState }: VisualiseProps) {
         height: '100%',
         padding: 40,
         backgroundColor: 'var(--color-background)',
-        overflow: 'auto',
+        overflow: 'hidden',
       }}
     >
       <div
@@ -514,10 +516,9 @@ export default function Visualise({ appState }: VisualiseProps) {
                     paddingTop: 16,
                     borderTop: '1px solid var(--color-gray-200)',
                     lineHeight: 1.5,
-                  }}>
-                    <div><strong>Table:</strong> {tableName}</div>
-                    <div><strong>Column:</strong> {selectedColumn}</div>
-                    <div style={{ marginTop: 8, fontSize: 10, opacity: 0.7 }}>Generated with Calyra</div>
+                  }} tracking-widest>
+                    <div>{tableName}, {selectedColumn}</div>
+                    <div style={{ marginTop: 8, fontSize: 10, opacity: 0.7 }}>Made with Calyra</div>
                   </div>
                 </div>
               );
@@ -589,11 +590,12 @@ export default function Visualise({ appState }: VisualiseProps) {
                   pointerEvents: 'none',
                 }}
               >
-                <div style={{ transform: 'scale(0.9)', transformOrigin: 'center' }}>
+                <div style={{ transform: 'scale(1.1)', transformOrigin: 'center' }}>
                   <CalyraCalendar 
                     clearToken={0} 
                     onDateSelected={() => {}}
                     heatmapData={heatmapData}
+                    hideControls={true}
                   />
                 </div>
               </div>
@@ -606,12 +608,52 @@ export default function Visualise({ appState }: VisualiseProps) {
                 borderTop: '1px solid var(--color-gray-200)',
                 lineHeight: 1.5,
               }}>
-                <div><strong>Table:</strong> {selectedTableIndex !== null ? appState.titles[Number(selectedTableIndex)] : ''}</div>
-                <div><strong>Column:</strong> {selectedColumn}</div>
-                <div style={{ marginTop: 8, fontSize: 10, opacity: 0.7 }}>Generated with Calyra</div>
+                    <div>{new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).replace(' ', ' /')}</div>
+                    <div>{selectedColumn}</div>
+                    <div style={{ marginTop: 8, fontSize: 10, opacity: 0.7 }}>Made with Calyra</div>
               </div>
             </div>
             )}
+            </div>
+
+            {/* Pagination Dots */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: 8,
+                marginTop: 32,
+              }}
+            >
+              {Array.from({ length: totalVizCount }).map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentVizIndex(index)}
+                  style={{
+                    width: currentVizIndex === index ? 8 : 6,
+                    height: currentVizIndex === index ? 8 : 6,
+                    borderRadius: '50%',
+                    border: 'none',
+                    backgroundColor: currentVizIndex === index ? 'var(--color-primary)' : 'var(--color-gray-400)',
+                    cursor: 'pointer',
+                    padding: 0,
+                    transition: 'all 0.3s ease',
+                    opacity: currentVizIndex === index ? 1 : 0.5,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (currentVizIndex !== index) {
+                      e.currentTarget.style.opacity = '0.8';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentVizIndex !== index) {
+                      e.currentTarget.style.opacity = '0.5';
+                    }
+                  }}
+                  aria-label={`Go to visualization ${index + 1}`}
+                />
+              ))}
             </div>
           </div>
         )}
